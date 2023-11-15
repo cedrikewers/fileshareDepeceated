@@ -31,6 +31,9 @@ const landigPage : string = `
     <head>
         <title>Storage Usage</title>
         <style>
+            body{
+                background-color: grey;
+            }
             .container {
                 width: 50%;
                 margin: 0 auto;
@@ -71,28 +74,89 @@ const landigPage : string = `
                         {{filepaths}}
                 </ul>
         </div>
-        <div>
+        <div id="uploadDiv">
                 <h2>Upload a New File:</h2>
-                <form action="/upload" method="post" enctype="multipart/form-data">
-                        <input type="file" name="file">
-                        <br><br>
-                        <input type="submit" value="Upload">
-                </form>
+				<input type="file"id="file">
+				<br><br>
+				<button id="upload" style="margin-right: 15px"> Upload </button>
         </div>
     </body>
-</html>
-    
-  </body>
+	<script>
+        const partSize = 10 * 1024 * 1024; // 10MB
+        const maxSize = 25 * partSize; // 250MB
+
+		async function loadingBar(){
+			//display loading bar
+			let dotcount = 1;
+			const uploadDiv = document.getElementById('uploadDiv');
+			const loadingDots = document.createElement('span');
+			uploadDiv.appendChild(loadingDots);
+			const dots = () => {
+				loadingDots.innerHTML = "Uploading" + ".".repeat(dotcount);
+				dotcount = (dotcount + 1) % 4;
+				setTimeout(dots, 500);
+			}
+			dots();
+		} 
+
+        const fileInput = document.getElementById('file');
+        const uploadButton = document.getElementById('upload');
+        uploadButton.addEventListener('click', async (event) => {
+
+			loadingBar();
+
+            const [file] = fileInput.files;
+            if(!file) {
+                console.log("no file selected");
+                return;
+            }
+
+            if(file.size > maxSize) {
+                console.log("file too large");
+                return;
+            }
+
+            const key = btoa(file.name)
+
+            const response = await fetch('/create/' + key, {method: 'POST'})
+			const responseJson = await response.json();
+            const uploadId = responseJson.uploadId;
+
+            const parts = []
+            for(i = 0; i < file.size / partSize; i++){
+                parts[i] = fetch(
+                    '/upload/' + key + "?uploadId=" + uploadId+ "&part=" + (i + 1), 
+                    {
+                        method: 'PUT', 
+                        body: file.slice(i * partSize, (i + 1) * partSize)
+                    }
+                );
+            }
+
+            Promise.all(parts).then(async (responses) => {
+                const responseJsons = await Promise.all(responses.map((response) => response.json()));
+				const uploadedParts = responseJsons.map((responseJson) => responseJson.uploadedPart);
+
+                await fetch('/complete/' + key + "?uploadId=" + uploadId, {
+                    method: 'POST',
+                    body: JSON.stringify({parts: uploadedParts})
+                });
+
+				location.reload();
+            });
+
+        });
+	</script>
 </html>
 `;
 /**
  * HTML replacement {{key}} gets replaced with value
  */
 
-interface replaceStrings {
+interface ReplaceStrings {
 	[key: string]: string;
 }
-function replaceStrings(str: string, replaceStrings: replaceStrings) : string {
+function replaceStrings(str: string, replaceStrings: ReplaceStrings) : string {
 	for (const [key, value] of Object.entries(replaceStrings)) {
 		str = str.replace(`{{${key}}}`, value);
 	}
@@ -120,14 +184,14 @@ function humanFileSize(bytes: number) : string {
  * @returns the html response
  */
 async function home(env: Env) : Promise<Response> {
-	let rStrings : replaceStrings = {};
+	let rStrings : ReplaceStrings = {};
 
 	const bucketItems = await env.cloudStorage.list();
 	let storageUsage : number = 0;
 	
 	const items = bucketItems.objects.map((item) => {
 		storageUsage += item.size;
-		return `<li><a href="/download/${encodeURIComponent(item.key)}">${item.key}</a> (${humanFileSize(item.size)})</li>`;
+		return `<li><a href="/download/${atob(item.key)}">${atob(item.key)}</a> (${humanFileSize(item.size)})</li>`;
 	});
 
 	rStrings["storageusagepercent"] = (storageUsage / 1e9).toFixed(2);
@@ -141,27 +205,83 @@ async function home(env: Env) : Promise<Response> {
 
 async function download(path: string, env:Env) : Promise<Response> {
 	const filename : string = path.replace('/download/', '');
-	if(!filename){
+	if(!filename.length){
 		return new Response('400 - Bad Request', { status: 400 });
 	}
 
-	const file = await env.cloudStorage.get(decodeURIComponent(filename));
+	const file = await env.cloudStorage.get(btoa(filename));
 	if(!file){
 		return new Response('404 - Not Found', { status: 404 });
 	}
 	return new Response(file.body, { headers: { 'content-type': 'application/octet-stream' } });
 }
 
-class RemoveAndReadContentDispositionTranformStream implements Transformer<Uint8Array, Uint8Array> {
-	private contentDisposition: string | null = null;
-
-	async transform(chunk: Uint8Array, controller: TransformStreamDefaultController<Uint8Array>): Promise<void> {
-		const text = new TextDecoder().decode(chunk);
-		const match = text.match(/Content-Disposition:.*filename="(.*)"/);
+async function upload(request: Request, env: Env) : Promise<Response> {
+	const bucketItems = await env.cloudStorage.list();
+	let storageUsage : number = 0;
+	const items = bucketItems.objects.forEach((item) => {
+		storageUsage += item.size;
+	});
+	if(storageUsage + parseInt(request.headers.get('content-length') || "0") > 1e9){
+		return new Response(JSON.stringify({error: "Storage limit reached"}), { status: 400 });
 	}
+
+	const url = new URL(request.url);
+	const path = url.pathname.split('/');
+	const key = path[2];
+	switch(path[1]){
+		case 'create': {
+			const mpUpload = await env.cloudStorage.createMultipartUpload(key);
+			return new Response(JSON.stringify({
+				key: mpUpload.key,
+				uploadId: mpUpload.uploadId,
+			}));
+		}
+
+		case 'upload': {
+			try{
+				const uploadId = url.searchParams.get('uploadId') || '';
+				const partNo = parseInt(url.searchParams.get('part') || '0');
+
+				const mpUpload = env.cloudStorage.resumeMultipartUpload(key, uploadId);
+		
+				const uploadedPart: R2UploadedPart = await mpUpload.uploadPart(partNo, await request.arrayBuffer());
+				return new Response(JSON.stringify({uploadedPart}));
+			}
+			catch(e : any){
+				return new Response(JSON.stringify({error: e.message}), { status: 500 });
+			}
+		}
+
+ 		case 'complete': {
+			try{
+				const uploadId = url.searchParams.get('uploadId') || '';
+				const partNo = parseInt(path[2]);
+
+				const mpUpload = env.cloudStorage.resumeMultipartUpload(key, uploadId);
+
+				interface completeBody {
+					parts: R2UploadedPart[];
+				}
+		
+				const completeBody: completeBody = await request.json();
+				console.log(JSON.stringify(completeBody));
+				const object = await mpUpload.complete(completeBody.parts);
+				return new Response(null, {
+					headers: {
+						etag: object.httpEtag,
+					},
+				});
+			}
+			catch(e : any){
+				return new Response(JSON.stringify({error: e.message}), { status: 500 });
+			}
+		}
+
+	}
+
+	return new Response(JSON.stringify({error: "Method not supported"}), { status: 400 });
 }
-
-
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -174,10 +294,8 @@ export default {
 		else if(path.startsWith('/download')){
 			return await download(path, env);
 		}
-		else if(request.method === 'POST' && path === '/upload'){
-			
-
-			return new Response((await request.body?.getReader().read())?.value, { headers: { 'content-type': 'application/json' } });
+		else if(request.method === 'POST' || request.method === 'PUT'){
+			return await upload(request, env);
 		}
 		else{
 				return new Response('404 - Not Found', { status: 404 });
