@@ -94,10 +94,10 @@
             const storageUsage = document.getElementById('storage-usage');
             const storageUsageBar = document.getElementById('storage-usage-bar');
 
-            storageUsage.innerHTML = resultObject.storageUsage;
+            storageUsage.innerHTML = humanFileSize(resultObject.storageUsage);
             storageUsageBar.style.width = (resultObject.storageUsage / resultObject.maxStorageCapacity) * 100 + "%";
 
-            resultObject.downloadableIttems.forEach((item) => {
+            resultObject.downloadableItems.forEach((item) => {
                 const li = document.createElement('li');
                 li.innerHTML = `<a href="${item.downloadUri}">${item.name}</a> (${humanFileSize(item.size)})`
                 filepaths.appendChild(li);
