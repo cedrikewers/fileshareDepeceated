@@ -13,8 +13,7 @@ export const onRequestPost:  PagesFunction<Env> = async (ctx) => {
 		return new Response(JSON.stringify({error: "Storage limit reached"}), { status: 503 });
 	}
 
-	const url = new URL(ctx.request.url);
-	const key = "fileshare/" + btoa(url.pathname.split('/')[-1]);
+    const key = ctx.params.key as string;
     try{
         const mpUpload = await ctx.env.cloudStorage.createMultipartUpload(key);
         return new Response(JSON.stringify({

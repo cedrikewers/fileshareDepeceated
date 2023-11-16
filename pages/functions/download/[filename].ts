@@ -5,7 +5,7 @@ interface Env {
 
 export const onRequestGet : PagesFunction<Env> = async (ctx) => {
     const path = new URL(ctx.request.url).pathname;
-    const filename : string = path.replace('/download/', '');
+    const filename = ctx.params.filename as string;
 
 	const key = "fileshare/" + btoa(filename);
 	const file = await ctx.env.cloudStorage.get(key);

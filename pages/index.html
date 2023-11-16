@@ -83,7 +83,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const result = await fetch(apiURL + '/view', {method: 'GET', headers: {'Access-Control-Allow-Origin' : apiURL}})
+            const result = await fetch('/view', {method: 'GET'})
             const resultObject = await result.json();
             if(resultObject.error) {
                 console.log(resultObject.error);
