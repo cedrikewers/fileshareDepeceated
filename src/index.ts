@@ -29,7 +29,7 @@ const landigPage : string = `
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Storage Usage</title>
+        <title>Fileshare</title>
         <style>
             body{
                 background-color: grey;
@@ -66,7 +66,7 @@ const landigPage : string = `
             <div class="bar">
                 <div class="bar-fill" style="width: {{storageusagepercent}}%;"></div>
             </div>
-            <div class="label">Storage Usage: {{storageusage}} / 10GB</div>
+            <div class="label">Storage Usage: {{storageusage}} / 5GB</div>
         </div>
         <div>
                 <h2>Available Files for Download:</h2>
@@ -116,7 +116,7 @@ const landigPage : string = `
                 return;
             }
 
-            const key = btoa(file.name)
+            const key = file.name
 
             const response = await fetch('/create/' + key, {method: 'POST'})
 			const responseJson = await response.json();
@@ -163,6 +163,8 @@ function replaceStrings(str: string, replaceStrings: ReplaceStrings) : string {
 	return str;
 }
 
+const maxStorageCapacity = 5e8;
+
 
 /**
  * Human readable file size
@@ -186,15 +188,16 @@ function humanFileSize(bytes: number) : string {
 async function home(env: Env) : Promise<Response> {
 	let rStrings : ReplaceStrings = {};
 
-	const bucketItems = await env.cloudStorage.list();
+	const bucketItems = await env.cloudStorage.list({prefix: 'fileshare/'});
 	let storageUsage : number = 0;
 	
 	const items = bucketItems.objects.map((item) => {
 		storageUsage += item.size;
-		return `<li><a href="/download/${atob(item.key)}">${atob(item.key)}</a> (${humanFileSize(item.size)})</li>`;
+		const key = item.key.replace('fileshare/', '');
+		return `<li><a href="/download/${atob(key)}">${decodeURIComponent(atob(key))}</a> (${humanFileSize(item.size)})</li>`;
 	});
 
-	rStrings["storageusagepercent"] = (storageUsage / 1e9).toFixed(2);
+	rStrings["storageusagepercent"] = (storageUsage / maxStorageCapacity).toFixed(2);
 	rStrings["storageusage"] = `${humanFileSize(storageUsage)}`;
 	rStrings["filepaths"] = items.join('\n');
 
@@ -209,7 +212,8 @@ async function download(path: string, env:Env) : Promise<Response> {
 		return new Response('400 - Bad Request', { status: 400 });
 	}
 
-	const file = await env.cloudStorage.get(btoa(filename));
+	const key = "fileshare/" + btoa(filename);
+	const file = await env.cloudStorage.get(key);
 	if(!file){
 		return new Response('404 - Not Found', { status: 404 });
 	}
@@ -222,13 +226,13 @@ async function upload(request: Request, env: Env) : Promise<Response> {
 	const items = bucketItems.objects.forEach((item) => {
 		storageUsage += item.size;
 	});
-	if(storageUsage + parseInt(request.headers.get('content-length') || "0") > 1e9){
+	if(storageUsage + parseInt(request.headers.get('content-length') || "0") > maxStorageCapacity){
 		return new Response(JSON.stringify({error: "Storage limit reached"}), { status: 400 });
 	}
 
 	const url = new URL(request.url);
 	const path = url.pathname.split('/');
-	const key = path[2];
+	const key = "fileshare/" + btoa(path[2]);
 	switch(path[1]){
 		case 'create': {
 			const mpUpload = await env.cloudStorage.createMultipartUpload(key);
@@ -256,7 +260,6 @@ async function upload(request: Request, env: Env) : Promise<Response> {
  		case 'complete': {
 			try{
 				const uploadId = url.searchParams.get('uploadId') || '';
-				const partNo = parseInt(path[2]);
 
 				const mpUpload = env.cloudStorage.resumeMultipartUpload(key, uploadId);
 
