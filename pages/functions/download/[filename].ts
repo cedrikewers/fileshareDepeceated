@@ -8,6 +8,7 @@ export const onRequestGet : PagesFunction<Env> = async (ctx) => {
     const filename = ctx.params.filename as string;
 
 	const key = "fileshare/" + btoa(decodeURIComponent(filename));
+	console.log(key);
 	const file = await ctx.env.cloudStorage.get(key);
 	if(!file){
 		return new Response('404 - Not Found', { status: 404 });
