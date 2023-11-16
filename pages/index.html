@@ -130,7 +130,7 @@
             const parts = []
             for(i = 0; i < file.size / partSize; i++){
                 parts[i] = fetch(
-                    '/upload/continue' + key + "?uploadId=" + uploadId+ "&part=" + (i + 1), 
+                    '/upload/continue/' + key + "?uploadId=" + uploadId+ "&part=" + (i + 1), 
                     {
                         method: 'PUT', 
                         body: file.slice(i * partSize, (i + 1) * partSize)
