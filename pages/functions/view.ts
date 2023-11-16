@@ -30,7 +30,7 @@ export const onRequestGet : PagesFunction<Env> = async (ctx) => {
 		responseData.downloadableItems?.push({
 			name: decodeURIComponent(atob(key)),
 			size: item.size,
-			downloadUri: `/download/${key}`,
+			downloadUri: `/download/${atob(key)}`,
 		});
 	});
 
