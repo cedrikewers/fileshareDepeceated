@@ -303,7 +303,7 @@ export default {
 		const path = url.pathname;
 
 		if(path === '' || path === '/'){
-			return new Response("No content", { status: 204 })
+			return new Response(null, { status: 204 })
 		}
 		else if (path.startsWith("/view")){
 			return await view(env);
