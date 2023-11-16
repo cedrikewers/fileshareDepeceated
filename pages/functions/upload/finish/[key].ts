@@ -3,7 +3,7 @@ interface Env {
 	db : D1Database;
 }
 
-export const onRequestPut:  PagesFunction<Env> = async (ctx) => {
+export const onRequestPost:  PagesFunction<Env> = async (ctx) => {
 
     const url = new URL(ctx.request.url);
     const key = ctx.params.key as string;
