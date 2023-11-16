@@ -24,6 +24,11 @@ binding = "cloudStorage"
 bucket_name = "bulk"
 preview_bucket_name = "devbulk"
 
+[[d1_databases]]
+binding = "db"
+database_name = "cedrikewers"
+database_id = "8798c6c1-410c-4eb4-95d8-781023f460f5"
+
 # Bind a Queue producer. Use this binding to schedule an arbitrary task that may be processed later by a Queue consumer.
 # Docs: https://developers.cloudflare.com/queues/get-started
 # [[queues.producers]]

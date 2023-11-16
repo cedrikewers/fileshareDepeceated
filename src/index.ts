@@ -8,6 +8,8 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
+import { Authentication } from "./authentication";
+
 export interface Env {
 	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
 	// MY_KV_NAMESPACE: KVNamespace;
@@ -17,6 +19,7 @@ export interface Env {
 	//
 	// Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
 	cloudStorage: R2Bucket;
+	db : D1Database;
 	//
 	// Example binding to a Service. Learn more at https://developers.cloudflare.com/workers/runtime-apis/service-bindings/
 	// MY_SERVICE: Fetcher;
@@ -24,6 +27,15 @@ export interface Env {
 	// Example binding to a Queue. Learn more at https://developers.cloudflare.com/queues/javascript-apis/
 	// MY_QUEUE: Queue;
 }
+
+const uploadDiv : string = `
+		<div id="uploadDiv">
+                <h2>Upload a New File:</h2>
+				<input type="file"id="file">
+				<br><br>
+				<button id="upload" style="margin-right: 15px"> Upload </button>
+        </div>
+`;
 
 const landigPage : string = `
 <!DOCTYPE html>
@@ -74,12 +86,7 @@ const landigPage : string = `
                         {{filepaths}}
                 </ul>
         </div>
-        <div id="uploadDiv">
-                <h2>Upload a New File:</h2>
-				<input type="file"id="file">
-				<br><br>
-				<button id="upload" style="margin-right: 15px"> Upload </button>
-        </div>
+        {{uploadDiv}}
     </body>
 	<script>
         const partSize = 10 * 1024 * 1024; // 10MB
@@ -200,6 +207,7 @@ async function home(env: Env) : Promise<Response> {
 	rStrings["storageusagepercent"] = (storageUsage / maxStorageCapacity).toFixed(2);
 	rStrings["storageusage"] = `${humanFileSize(storageUsage)}`;
 	rStrings["filepaths"] = items.join('\n');
+	rStrings["uploadDiv"] = uploadDiv;
 
 	let html : string = landigPage.slice();
 
