@@ -13,7 +13,7 @@ export const onRequestPost:  PagesFunction<Env> = async (ctx) => {
 		return new Response(JSON.stringify({error: "Storage limit reached"}), { status: 503 });
 	}
 
-    const key = ctx.params.key as string;
+    const key = btoa(ctx.params.key as string);
     try{
         const mpUpload = await ctx.env.cloudStorage.createMultipartUpload(key);
         return new Response(JSON.stringify({
