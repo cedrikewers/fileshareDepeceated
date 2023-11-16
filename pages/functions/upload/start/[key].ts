@@ -3,7 +3,7 @@ interface Env {
 	db : D1Database;
 }
 
-const maxStorageCapacity = 5e8;
+const maxStorageCapacity = 5e9;
 
 export const onRequestPost:  PagesFunction<Env> = async (ctx) => {
     const bucketItems = await ctx.env.cloudStorage.list();

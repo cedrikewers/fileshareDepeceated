@@ -170,7 +170,7 @@ export interface Env {
 // 	return str;
 // }
 
-const maxStorageCapacity = 5e8;
+const maxStorageCapacity = 5e9;
 
 interface DownloadableItem {
 	name: string;
