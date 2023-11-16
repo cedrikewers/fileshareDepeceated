@@ -1,1 +1,156 @@
-Hello World!
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Fileshare</title>
+        <style>
+            body{
+                background-color: grey;
+            }
+            .container {
+                width: 50%;
+                margin: 0 auto;
+                text-align: center;
+            }
+            .bar {
+                width: 100%;
+                height: 30px;
+                background-color: #ddd;
+                border-radius: 5px;
+                margin-bottom: 10px;
+                position: relative;
+            }
+            .bar-fill {
+                height: 100%;
+                background-color: green;
+                border-radius: 5px;
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+            .label {
+                font-size: 20px;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="bar">
+                <div class="bar-fill" id="storage-usage-bar"></div> <!--style="width: ;"-->
+            </div>
+            <div class="label">Storage Usage: <span id="storage-usage"></span> / 5GB</div>
+        </div>
+        <div>
+                <h2>Available Files for Download:</h2>
+                <ul id="filepaths">
+                    
+                </ul>
+        </div>
+        <div id="uploadDiv">
+            <h2>Upload a New File:</h2>
+            <input type="file"id="file">
+            <br><br>
+            <button id="upload" style="margin-right: 15px"> Upload </button>
+        </div>
+    </body>
+	<script>
+        const partSize = 10 * 1024 * 1024; // 10MB
+        const maxSize = 25 * partSize; // 250MB
+        const apiURL = "https://api.fileshare.cedrikewers.com"
+
+		async function loadingBar(){
+			//display loading bar
+			let dotcount = 1;
+			const uploadDiv = document.getElementById('uploadDiv');
+			const loadingDots = document.createElement('span');
+			uploadDiv.appendChild(loadingDots);
+			const dots = () => {
+				loadingDots.innerHTML = "Uploading" + ".".repeat(dotcount);
+				dotcount = (dotcount + 1) % 4;
+				setTimeout(dots, 500);
+			}
+			dots();
+		} 
+
+        function humanFileSize(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+            let unitCounter = 0;
+            const thresh = 1024;
+            while(bytes >= thresh){
+                bytes /= thresh;
+                unitCounter++;
+            }
+            return `${bytes.toFixed(2)} ${units[unitCounter]}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const result = await fetch(apiURL + '/view', {method: 'GET'})
+            const resultObject = await result.json();
+            if(resultObject.error) {
+                console.log(resultObject.error);
+                return;
+            }
+
+            const filepaths = document.getElementById('filepaths');
+            const storageUsage = document.getElementById('storage-usage');
+            const storageUsageBar = document.getElementById('storage-usage-bar');
+
+            storageUsage.innerHTML = resultObject.storageUsage;
+            storageUsageBar.style.width = (resultObject.storageUsage / resultObject.maxStorageCapacity) * 100 + "%";
+
+            resultObject.downloadableIttems.forEach((item) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="${apiURL + item.downloadUri}">${item.name}</a> (${humanFileSize(item.size)})`
+                filepaths.appendChild(li);
+            });
+        });
+
+        const fileInput = document.getElementById('file');
+        const uploadButton = document.getElementById('upload');
+        uploadButton.addEventListener('click', async (event) => {
+
+			loadingBar();
+
+            const [file] = fileInput.files;
+            if(!file) {
+                console.log("no file selected");
+                return;
+            }
+
+            if(file.size > maxSize) {
+                console.log("file too large");
+                return;
+            }
+
+            const key = file.name
+
+            const response = await fetch(apiURL + '/create/' + key, {method: 'POST'})
+			const responseJson = await response.json();
+            const uploadId = responseJson.uploadId;
+
+            const parts = []
+            for(i = 0; i < file.size / partSize; i++){
+                parts[i] = fetch(
+                    '/upload/' + key + "?uploadId=" + uploadId+ "&part=" + (i + 1), 
+                    {
+                        method: 'PUT', 
+                        body: file.slice(i * partSize, (i + 1) * partSize)
+                    }
+                );
+            }
+
+            Promise.all(parts).then(async (responses) => {
+                const responseJsons = await Promise.all(responses.map((response) => response.json()));
+				const uploadedParts = responseJsons.map((responseJson) => responseJson.uploadedPart);
+
+                await fetch(apiURL + '/complete/' + key + "?uploadId=" + uploadId, {
+                    method: 'POST',
+                    body: JSON.stringify({parts: uploadedParts})
+                });
+
+				location.reload();
+            });
+
+        });
+	</script>
+</html>

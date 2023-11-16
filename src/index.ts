@@ -28,163 +28,161 @@ export interface Env {
 	// MY_QUEUE: Queue;
 }
 
-const uploadDiv : string = `
-		<div id="uploadDiv">
-                <h2>Upload a New File:</h2>
-				<input type="file"id="file">
-				<br><br>
-				<button id="upload" style="margin-right: 15px"> Upload </button>
-        </div>
-`;
+// const uploadDiv : string = `
+// 		<div id="uploadDiv">
+//                 <h2>Upload a New File:</h2>
+// 				<input type="file"id="file">
+// 				<br><br>
+// 				<button id="upload" style="margin-right: 15px"> Upload </button>
+//         </div>
+// `;
 
-const landigPage : string = `
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>Fileshare</title>
-        <style>
-            body{
-                background-color: grey;
-            }
-            .container {
-                width: 50%;
-                margin: 0 auto;
-                text-align: center;
-            }
-            .bar {
-                width: 100%;
-                height: 30px;
-                background-color: #ddd;
-                border-radius: 5px;
-                margin-bottom: 10px;
-                position: relative;
-            }
-            .bar-fill {
-                height: 100%;
-                background-color: green;
-                border-radius: 5px;
-                position: absolute;
-                top: 0;
-                left: 0;
-            }
-            .label {
-                font-size: 20px;
-                font-weight: bold;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="bar">
-                <div class="bar-fill" style="width: {{storageusagepercent}}%;"></div>
-            </div>
-            <div class="label">Storage Usage: {{storageusage}} / 5GB</div>
-        </div>
-        <div>
-                <h2>Available Files for Download:</h2>
-                <ul>
-                        {{filepaths}}
-                </ul>
-        </div>
-        {{uploadDiv}}
-    </body>
-	<script>
-        const partSize = 10 * 1024 * 1024; // 10MB
-        const maxSize = 25 * partSize; // 250MB
+// const landigPage : string = `
+// <!DOCTYPE html>
+// <html>
+//     <head>
+//         <title>Fileshare</title>
+//         <style>
+//             body{
+//                 background-color: grey;
+//             }
+//             .container {
+//                 width: 50%;
+//                 margin: 0 auto;
+//                 text-align: center;
+//             }
+//             .bar {
+//                 width: 100%;
+//                 height: 30px;
+//                 background-color: #ddd;
+//                 border-radius: 5px;
+//                 margin-bottom: 10px;
+//                 position: relative;
+//             }
+//             .bar-fill {
+//                 height: 100%;
+//                 background-color: green;
+//                 border-radius: 5px;
+//                 position: absolute;
+//                 top: 0;
+//                 left: 0;
+//             }
+//             .label {
+//                 font-size: 20px;
+//                 font-weight: bold;
+//             }
+//         </style>
+//     </head>
+//     <body>
+//         <div class="container">
+//             <div class="bar">
+//                 <div class="bar-fill" style="width: {{storageusagepercent}}%;"></div>
+//             </div>
+//             <div class="label">Storage Usage: {{storageusage}} / 5GB</div>
+//         </div>
+//         <div>
+//                 <h2>Available Files for Download:</h2>
+//                 <ul>
+//                         {{filepaths}}
+//                 </ul>
+//         </div>
+//         {{uploadDiv}}
+//     </body>
+// 	<script>
+//         const partSize = 10 * 1024 * 1024; // 10MB
+//         const maxSize = 25 * partSize; // 250MB
 
-		async function loadingBar(){
-			//display loading bar
-			let dotcount = 1;
-			const uploadDiv = document.getElementById('uploadDiv');
-			const loadingDots = document.createElement('span');
-			uploadDiv.appendChild(loadingDots);
-			const dots = () => {
-				loadingDots.innerHTML = "Uploading" + ".".repeat(dotcount);
-				dotcount = (dotcount + 1) % 4;
-				setTimeout(dots, 500);
-			}
-			dots();
-		} 
+// 		async function loadingBar(){
+// 			//display loading bar
+// 			let dotcount = 1;
+// 			const uploadDiv = document.getElementById('uploadDiv');
+// 			const loadingDots = document.createElement('span');
+// 			uploadDiv.appendChild(loadingDots);
+// 			const dots = () => {
+// 				loadingDots.innerHTML = "Uploading" + ".".repeat(dotcount);
+// 				dotcount = (dotcount + 1) % 4;
+// 				setTimeout(dots, 500);
+// 			}
+// 			dots();
+// 		} 
 
-        const fileInput = document.getElementById('file');
-        const uploadButton = document.getElementById('upload');
-        uploadButton.addEventListener('click', async (event) => {
+//         const fileInput = document.getElementById('file');
+//         const uploadButton = document.getElementById('upload');
+//         uploadButton.addEventListener('click', async (event) => {
 
-			loadingBar();
+// 			loadingBar();
 
-            const [file] = fileInput.files;
-            if(!file) {
-                console.log("no file selected");
-                return;
-            }
+//             const [file] = fileInput.files;
+//             if(!file) {
+//                 console.log("no file selected");
+//                 return;
+//             }
 
-            if(file.size > maxSize) {
-                console.log("file too large");
-                return;
-            }
+//             if(file.size > maxSize) {
+//                 console.log("file too large");
+//                 return;
+//             }
 
-            const key = file.name
+//             const key = file.name
 
-            const response = await fetch('/create/' + key, {method: 'POST'})
-			const responseJson = await response.json();
-            const uploadId = responseJson.uploadId;
+//             const response = await fetch('/create/' + key, {method: 'POST'})
+// 			const responseJson = await response.json();
+//             const uploadId = responseJson.uploadId;
 
-            const parts = []
-            for(i = 0; i < file.size / partSize; i++){
-                parts[i] = fetch(
-                    '/upload/' + key + "?uploadId=" + uploadId+ "&part=" + (i + 1), 
-                    {
-                        method: 'PUT', 
-                        body: file.slice(i * partSize, (i + 1) * partSize)
-                    }
-                );
-            }
+//             const parts = []
+//             for(i = 0; i < file.size / partSize; i++){
+//                 parts[i] = fetch(
+//                     '/upload/' + key + "?uploadId=" + uploadId+ "&part=" + (i + 1), 
+//                     {
+//                         method: 'PUT', 
+//                         body: file.slice(i * partSize, (i + 1) * partSize)
+//                     }
+//                 );
+//             }
 
-            Promise.all(parts).then(async (responses) => {
-                const responseJsons = await Promise.all(responses.map((response) => response.json()));
-				const uploadedParts = responseJsons.map((responseJson) => responseJson.uploadedPart);
+//             Promise.all(parts).then(async (responses) => {
+//                 const responseJsons = await Promise.all(responses.map((response) => response.json()));
+// 				const uploadedParts = responseJsons.map((responseJson) => responseJson.uploadedPart);
 
-                await fetch('/complete/' + key + "?uploadId=" + uploadId, {
-                    method: 'POST',
-                    body: JSON.stringify({parts: uploadedParts})
-                });
+//                 await fetch('/complete/' + key + "?uploadId=" + uploadId, {
+//                     method: 'POST',
+//                     body: JSON.stringify({parts: uploadedParts})
+//                 });
 
-				location.reload();
-            });
+// 				location.reload();
+//             });
 
-        });
-	</script>
-</html>
-`;
+//         });
+// 	</script>
+// </html>
+// `;
 /**
  * HTML replacement {{key}} gets replaced with value
  */
 
-interface ReplaceStrings {
-	[key: string]: string;
-}
-function replaceStrings(str: string, replaceStrings: ReplaceStrings) : string {
-	for (const [key, value] of Object.entries(replaceStrings)) {
-		str = str.replace(`{{${key}}}`, value);
-	}
-	return str;
-}
+// interface ReplaceStrings {
+// 	[key: string]: string;
+// }
+// function replaceStrings(str: string, replaceStrings: ReplaceStrings) : string {
+// 	for (const [key, value] of Object.entries(replaceStrings)) {
+// 		str = str.replace(`{{${key}}}`, value);
+// 	}
+// 	return str;
+// }
 
 const maxStorageCapacity = 5e8;
 
+interface DownloadableItem {
+	name: string;
+	size: number;
+	downloadUri: string;
+}
 
-/**
- * Human readable file size
- */
-function humanFileSize(bytes: number) : string {
-	const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-	let unitCounter = 0;
-	const thresh = 1024;
-	while(bytes >= thresh){
-		bytes /= thresh;
-		unitCounter++;
-	}
-	return `${bytes.toFixed(2)} ${units[unitCounter]}`;
+interface StandardResponse {
+	error?: string;
+	maxStorageCapacity?: number;
+	storageUsage?: number;
+	downloadableItems? : DownloadableItem[]
 }
 
 /**
@@ -192,26 +190,31 @@ function humanFileSize(bytes: number) : string {
  * @param env 
  * @returns the html response
  */
-async function home(env: Env) : Promise<Response> {
-	let rStrings : ReplaceStrings = {};
+async function view(env: Env) : Promise<Response> {
+	const responseData : StandardResponse = {maxStorageCapacity: maxStorageCapacity, downloadableItems: new Array<DownloadableItem>()};
 
 	const bucketItems = await env.cloudStorage.list({prefix: 'fileshare/'});
 	let storageUsage : number = 0;
 	
-	const items = bucketItems.objects.map((item) => {
+	bucketItems.objects.forEach((item) => {
 		storageUsage += item.size;
 		const key = item.key.replace('fileshare/', '');
-		return `<li><a href="/download/${atob(key)}">${decodeURIComponent(atob(key))}</a> (${humanFileSize(item.size)})</li>`;
+		responseData.downloadableItems?.push({
+			name: decodeURIComponent(atob(key)),
+			size: item.size,
+			downloadUri: `/download/${key}`,
+		});
+		//return `<li><a href="/download/${atob(key)}">${decodeURIComponent(atob(key))}</a> (${humanFileSize(item.size)})</li>`;
 	});
 
-	rStrings["storageusagepercent"] = (storageUsage / maxStorageCapacity).toFixed(2);
-	rStrings["storageusage"] = `${humanFileSize(storageUsage)}`;
-	rStrings["filepaths"] = items.join('\n');
-	rStrings["uploadDiv"] = uploadDiv;
+	responseData.storageUsage = storageUsage;
 
-	let html : string = landigPage.slice();
 
-	return new Response(replaceStrings(html, rStrings),  { headers: { 'content-type': 'text/html' } });
+	// rStrings["storageusagepercent"] = (storageUsage / maxStorageCapacity).toFixed(2);
+	// rStrings["storageusage"] = `${humanFileSize(storageUsage)}`;
+	// rStrings["filepaths"] = items.join('\n');
+	// rStrings["uploadDiv"] = uploadDiv;
+	return new Response(JSON.stringify(responseData),  { headers: { 'content-type': 'text/json' } });
 }
 
 async function download(path: string, env:Env) : Promise<Response> {
@@ -300,7 +303,10 @@ export default {
 		const path = url.pathname;
 
 		if(path === '' || path === '/'){
-			return await home(env);
+			return new Response("No content", { status: 204 })
+		}
+		else if (path.startsWith("/view")){
+			return await view(env);
 		}
 		else if(path.startsWith('/download')){
 			return await download(path, env);
@@ -309,7 +315,7 @@ export default {
 			return await upload(request, env);
 		}
 		else{
-				return new Response('404 - Not Found', { status: 404 });
+			return new Response('404 - Not Found', { status: 404 });
 		}
 
 	}
