@@ -121,7 +121,7 @@
                 return;
             }
 
-            const key = file.name
+            const key = encodeURIComponent(file.name);
 
             const response = await fetch('/upload/start/' + key, {method: 'POST'})
 			const responseJson = await response.json();

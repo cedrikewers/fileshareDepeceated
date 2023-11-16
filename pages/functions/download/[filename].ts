@@ -7,7 +7,7 @@ export const onRequestGet : PagesFunction<Env> = async (ctx) => {
     const path = new URL(ctx.request.url).pathname;
     const filename = ctx.params.filename as string;
 
-	const key = "fileshare/" + btoa(decodeURIComponent(filename));
+	const key = "fileshare/" + btoa(filename);
 	console.log(key);
 	const file = await ctx.env.cloudStorage.get(key);
 	if(!file){
