@@ -6,8 +6,8 @@ interface Env {
 export const onRequestPut:  PagesFunction<Env> = async (ctx) => {
 
     const url = new URL(ctx.request.url);
-    const key = btoa(ctx.params.key as string);
-    
+    const key = 'fileshare/' + btoa(ctx.params.key as string);
+
     try{
         const uploadId = url.searchParams.get('uploadId') || '';
         const partNo = parseInt(url.searchParams.get('part') || '0');
