@@ -56,7 +56,6 @@
 	<script>
         const partSize = 10 * 1024 * 1024; // 10MB
         const maxSize = 25 * partSize; // 250MB
-        const apiURL = "https://api.fileshare.cedrikewers.com"
 
 		async function loadingBar(){
 			//display loading bar
@@ -100,7 +99,7 @@
 
             resultObject.downloadableIttems.forEach((item) => {
                 const li = document.createElement('li');
-                li.innerHTML = `<a href="${apiURL + item.downloadUri}">${item.name}</a> (${humanFileSize(item.size)})`
+                li.innerHTML = `<a href="${item.downloadUri}">${item.name}</a> (${humanFileSize(item.size)})`
                 filepaths.appendChild(li);
             });
         });
@@ -124,14 +123,14 @@
 
             const key = file.name
 
-            const response = await fetch(apiURL + '/create/' + key, {method: 'POST'})
+            const response = await fetch('/upload/start/' + key, {method: 'POST'})
 			const responseJson = await response.json();
             const uploadId = responseJson.uploadId;
 
             const parts = []
             for(i = 0; i < file.size / partSize; i++){
                 parts[i] = fetch(
-                    '/upload/' + key + "?uploadId=" + uploadId+ "&part=" + (i + 1), 
+                    '/upload/continue' + key + "?uploadId=" + uploadId+ "&part=" + (i + 1), 
                     {
                         method: 'PUT', 
                         body: file.slice(i * partSize, (i + 1) * partSize)
@@ -143,7 +142,7 @@
                 const responseJsons = await Promise.all(responses.map((response) => response.json()));
 				const uploadedParts = responseJsons.map((responseJson) => responseJson.uploadedPart);
 
-                await fetch(apiURL + '/complete/' + key + "?uploadId=" + uploadId, {
+                await fetch('/upload/finish/' + key + "?uploadId=" + uploadId, {
                     method: 'POST',
                     body: JSON.stringify({parts: uploadedParts})
                 });
